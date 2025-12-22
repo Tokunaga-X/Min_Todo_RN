@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+
+# Native builds
+android/
+ios/
+
+# Logs and caches
+npm-debug.log*
+yarn-error.log*
+*.log
+*.tmp
+.DS_Store
+
+# Bundler/metro
+*.packager
+*.jsbundle
+
+# Misc
+.vscode/
+dist/
+build/
