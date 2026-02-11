@@ -232,6 +232,11 @@ const normalizeDailyTask = (task) => {
 
 export default function App() {
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const useWideLayout = viewportWidth > viewportHeight && viewportWidth >= 900;
+  const screenContainerStyle = [
+    styles.container,
+    !useWideLayout && styles.containerConstrained
+  ];
   const [todos, setTodos] = useState(initialTodos);
   const [history, setHistory] = useState([]);
   const [draft, setDraft] = useState("");
@@ -254,12 +259,17 @@ export default function App() {
   const [isCelebrating, setIsCelebrating] = useState(false);
   const [dailyNoteModal, setDailyNoteModal] = useState({ visible: false, taskId: null });
   const [dailyNoteDraft, setDailyNoteDraft] = useState("");
+  const [dailyUncompleteModal, setDailyUncompleteModal] = useState({
+    visible: false,
+    taskId: null
+  });
   const [isHydrated, setIsHydrated] = useState(false);
   const holdProgress = useRef(new Animated.Value(0)).current;
   const holdShake = useRef(new Animated.Value(0)).current;
   const celebrationProgress = useRef(new Animated.Value(0)).current;
   const holdTimerRef = useRef(null);
   const holdShakeLoopRef = useRef(null);
+  const completeTapRef = useRef({ taskId: null, at: 0 });
 
   const remainingCount = useMemo(
     () => todos.filter((item) => !item.done).length,
@@ -593,6 +603,14 @@ export default function App() {
     setDailyNoteDraft("");
   };
 
+  const openDailyUncompleteModal = (taskId) => {
+    setDailyUncompleteModal({ visible: true, taskId });
+  };
+
+  const closeDailyUncompleteModal = () => {
+    setDailyUncompleteModal({ visible: false, taskId: null });
+  };
+
   const saveDailyNote = () => {
     const note = dailyNoteDraft.trim();
     const todayKey = getTodayKey();
@@ -638,6 +656,9 @@ export default function App() {
     if (dailyNoteModal.taskId === id) {
       closeDailyNoteModal();
     }
+    if (dailyUncompleteModal.taskId === id) {
+      closeDailyUncompleteModal();
+    }
     setDailyTasks((prev) => prev.filter((task) => task.id !== id));
   };
 
@@ -656,6 +677,36 @@ export default function App() {
           : task
       )
     );
+  };
+
+  const uncompleteDailyTask = (id) => {
+    const todayKey = getTodayKey();
+    setDailyTasks((prev) =>
+      prev.map((task) => {
+        if (task.id !== id) return task;
+        const nextRecords = { ...(task.records || {}) };
+        const nextNotes = { ...(task.notes || {}) };
+        delete nextRecords[todayKey];
+        delete nextNotes[todayKey];
+        return {
+          ...task,
+          records: nextRecords,
+          notes: nextNotes
+        };
+      })
+    );
+  };
+
+  const handleCompletedButtonTap = (taskId, checkedToday) => {
+    if (!checkedToday) return;
+    const now = Date.now();
+    const { taskId: lastTaskId, at } = completeTapRef.current;
+    if (lastTaskId === taskId && now - at < 350) {
+      completeTapRef.current = { taskId: null, at: 0 };
+      openDailyUncompleteModal(taskId);
+      return;
+    }
+    completeTapRef.current = { taskId, at: now };
   };
 
   const clearHoldAnimation = () => {
@@ -749,7 +800,7 @@ export default function App() {
   const longGoals = goals.filter((goal) => goal.term === "long");
 
   const renderTodoScreen = () => (
-    <View style={styles.container}>
+    <View style={screenContainerStyle}>
       <Text style={styles.heading}>Today</Text>
       <View style={styles.tabRow}>
         <TouchableOpacity
@@ -876,7 +927,7 @@ export default function App() {
   };
 
   const renderGoalScreen = () => (
-    <View style={styles.container}>
+    <View style={screenContainerStyle}>
       <Text style={styles.heading}>Goals</Text>
       <TouchableOpacity style={styles.goalAddButton} onPress={() => openGoalModal(null)}>
         <Ionicons name="add" size={20} color="#0b132b" />
@@ -967,7 +1018,7 @@ export default function App() {
   };
 
   const renderDailyCheckScreen = () => (
-    <View style={styles.container}>
+    <View style={screenContainerStyle}>
       <Text style={styles.heading}>Daily Check</Text>
 
       <View style={styles.inputRow}>
@@ -1006,7 +1057,7 @@ export default function App() {
   );
 
   const renderComingSoonScreen = () => (
-    <View style={styles.container}>
+    <View style={screenContainerStyle}>
       <Text style={styles.heading}>working on it...</Text>
     </View>
   );
@@ -1269,6 +1320,7 @@ export default function App() {
                             ]}
                             onPressIn={() => startHoldComplete(item.id, checkedToday)}
                             onPressOut={endHoldComplete}
+                            onPress={() => handleCompletedButtonTap(item.id, checkedToday)}
                           >
                             <Animated.View
                               pointerEvents="none"
@@ -1592,6 +1644,38 @@ export default function App() {
           </View>
         </Modal>
 
+        <Modal visible={dailyUncompleteModal.visible} transparent animationType="fade">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Un-complete Task</Text>
+                <Pressable onPress={closeDailyUncompleteModal}>
+                  <Text style={styles.modalClose}>Close</Text>
+                </Pressable>
+              </View>
+              <View style={styles.modalBody}>
+                <Text style={styles.summaryText}>Do you want to un-complete this task?</Text>
+              </View>
+              <View style={styles.modalFooter}>
+                <Pressable style={styles.modalCancel} onPress={closeDailyUncompleteModal}>
+                  <Text style={styles.modalCancelText}>No</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.modalSave}
+                  onPress={() => {
+                    if (dailyUncompleteModal.taskId) {
+                      uncompleteDailyTask(dailyUncompleteModal.taskId);
+                    }
+                    closeDailyUncompleteModal();
+                  }}
+                >
+                  <Text style={styles.modalSaveText}>Yes</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -1610,7 +1694,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 90,
-    width: "100%",
+    width: "100%"
+  },
+  containerConstrained: {
     maxWidth: 820,
     alignSelf: "center"
   },

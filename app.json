@@ -3,7 +3,7 @@
     "name": "MinTodoRN",
     "slug": "min-todo-rn",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -18,8 +18,11 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.xuyuchao.mintodorn",
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundImage": "./assets/adaptive-icon-background.png",
         "backgroundColor": "#0b132b"
       }
     },
@@ -28,6 +31,11 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4fc9d87f-9392-4a6f-ac4d-c73c67579fe6"
+      }
+    }
   }
 }
